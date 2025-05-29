@@ -92,6 +92,8 @@ type anime struct {
 	Name              string      `json:"name"`
 	EnglishName       string      `json:"englishName"`
 	AvailableEpisodes interface{} `json:"availableEpisodes"`
+	Status            string      `json:"status"`
+	Type              string      `json:"type"`
 }
 
 // Response represents the structure of the API response
@@ -138,6 +140,8 @@ func (s *AllanimeScaper) Search(query string, mode string) ([]scraper.SearchResu
 				name
 				englishName
 				availableEpisodes
+				status
+				type
 			}
 		}
 	}`
@@ -201,8 +205,8 @@ func (s *AllanimeScaper) Search(query string, mode string) ([]scraper.SearchResu
 			ID:              anime.ID,
 			Title:           anime.Name,
 			AlternateTitles: alternateTitles,
-			Type:            "TV",
-			Status:          "Unknown",
+			Type:            anime.Type,
+			Status:          anime.Status,
 			Thumbnail:       "", // We'd need to add this to the GraphQL query
 		})
 	}

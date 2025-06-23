@@ -13,7 +13,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"unicode"
 
 	"github.com/wraient/pair/pkg/scraper"
 )
@@ -23,6 +22,62 @@ type AllanimeScaper struct {
 	allanimeRef  string
 	allanimeBase string
 	allanimeAPI  string
+}
+
+// NewAllanimeScaper creates a new instance of the allanime scraper
+func NewAllanimeScaper() *AllanimeScaper {
+	const (
+		agent        = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/121.0"
+		allanimeRef  = "https://allanime.to"
+		allanimeBase = "allanime.day"
+		allanimeAPI  = "https://api." + allanimeBase + "/api"
+	)
+
+	return &AllanimeScaper{
+		agent:        agent,
+		allanimeRef:  allanimeRef,
+		allanimeBase: allanimeBase,
+		allanimeAPI:  allanimeAPI,
+	}
+}
+
+// GetExtensionInfo returns metadata about this scraper implementation
+func (s *AllanimeScaper) GetExtensionInfo() (scraper.ExtensionInfo, error) {
+	return scraper.ExtensionInfo{
+		Name:    "AllAnime",
+		Package: "allanime",
+		Lang:    "en",
+		Version: "0.1.0",
+		NSFW:    false,
+		Sources: []scraper.SourceInfo{
+			{
+				ID:                   "3160569130087668532",
+				Name:                 "AllAnime",
+				BaseURL:              "https://allanime.to",
+				Language:             "en",
+				NSFW:                 false,
+				RateLimit:            50,
+				SupportsLatest:       false,
+				SupportsSearch:       true,
+				SupportsRelatedAnime: false,
+			},
+		},
+	}, nil
+}
+
+// GetSourceInfo retrieves metadata about a specific source
+func (s *AllanimeScaper) GetSourceInfo() (scraper.SourceInfo, error) {
+	return scraper.SourceInfo{
+		ID:                   "3160569130087668532",
+		Name:                 "AllAnime",
+		BaseURL:              "https://allanime.to",
+		Language:             "en",
+		NSFW:                 false,
+		RateLimit:            50,
+		SupportsLatest:       false,
+		SupportsSearch:       true,
+		SupportsRelatedAnime: false,
+	}, nil
 }
 
 // decodeProviderID decodes the encoded provider ID to get the actual URL
@@ -50,15 +105,13 @@ func (s *AllanimeScaper) decodeProviderID(encoded string) string {
 }
 
 // extractLinks retrieves the actual stream links from the provider
-func (s *AllanimeScaper) extractLinks(provider_id string) map[string]interface{} {
+func (s *AllanimeScaper) extractLinks(provider_id string) (map[string]interface{}, error) {
 	url := "https://" + s.allanimeBase + provider_id
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", url, nil)
 
-	var videoData map[string]interface{}
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error creating request: %v\n", err)
-		return nil
+		return nil, fmt.Errorf("error creating request: %v", err)
 	}
 
 	req.Header.Set("Referer", s.allanimeRef)
@@ -66,73 +119,26 @@ func (s *AllanimeScaper) extractLinks(provider_id string) map[string]interface{}
 
 	resp, err := client.Do(req)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error sending request: %v\n", err)
-		return nil
+		return nil, fmt.Errorf("error sending request: %v", err)
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error reading response: %v\n", err)
-		return nil
+		return nil, fmt.Errorf("error reading response: %v", err)
 	}
 
+	var videoData map[string]interface{}
 	err = json.Unmarshal(body, &videoData)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error parsing JSON: %v\n", err)
-		return nil
+		return nil, fmt.Errorf("error parsing JSON: %v", err)
 	}
 
-	return videoData
+	return videoData, nil
 }
 
-// Anime represents the structure of anime data from the API
-type anime struct {
-	ID                string      `json:"_id"`
-	Name              string      `json:"name"`
-	EnglishName       string      `json:"englishName"`
-	AvailableEpisodes interface{} `json:"availableEpisodes"`
-	Status            string      `json:"status"`
-	Type              string      `json:"type"`
-}
-
-// Response represents the structure of the API response
-type response struct {
-	Data struct {
-		Shows struct {
-			Edges []anime `json:"edges"`
-		} `json:"shows"`
-	} `json:"data"`
-}
-
-func NewAllanimeScaper() *AllanimeScaper {
-	const (
-		agent        = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/121.0"
-		allanimeRef  = "https://allanime.to"
-		allanimeBase = "allanime.day"
-		allanimeAPI  = "https://api." + allanimeBase + "/api"
-	)
-
-	return &AllanimeScaper{
-		agent:        agent,
-		allanimeRef:  allanimeRef,
-		allanimeBase: allanimeBase,
-		allanimeAPI:  allanimeAPI,
-	}
-}
-
-// GetInfo returns metadata about this scraper implementation
-func (s *AllanimeScaper) GetInfo() scraper.ScraperInfo {
-	return scraper.ScraperInfo{
-		ID:          "allanime",
-		Name:        "AllAnime",
-		Version:     "0.1.0",
-		Description: "Scraper for AllAnime - a popular anime streaming website",
-	}
-}
-
-// Search searches for anime matching the given query
-func (s *AllanimeScaper) Search(query string, mode string) ([]scraper.SearchResult, error) {
+// SearchAnime searches for anime with the given query and filters
+func (s *AllanimeScaper) SearchAnime(query string, page int, filters string) ([]scraper.Anime, error) {
 	searchGql := `query($search: SearchInput, $limit: Int, $page: Int, $translationType: VaildTranslationTypeEnumType, $countryOrigin: VaildCountryOriginEnumType) {
 		shows(search: $search, limit: $limit, page: $page, translationType: $translationType, countryOrigin: $countryOrigin) {
 			edges {
@@ -154,8 +160,8 @@ func (s *AllanimeScaper) Search(query string, mode string) ([]scraper.SearchResu
 			"query":        query,
 		},
 		"limit":           40,
-		"page":            1,
-		"translationType": mode,
+		"page":            page,
+		"translationType": "sub", // Default to sub
 		"countryOrigin":   "ALL",
 	}
 
@@ -164,10 +170,8 @@ func (s *AllanimeScaper) Search(query string, mode string) ([]scraper.SearchResu
 		return nil, fmt.Errorf("error encoding variables: %v", err)
 	}
 
-	// Build the request URL
 	reqURL := fmt.Sprintf("%s?variables=%s&query=%s", s.allanimeAPI, url.QueryEscape(string(variablesJSON)), url.QueryEscape(searchGql))
 
-	// Make the HTTP request
 	req, err := http.NewRequest("GET", reqURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error creating request: %v", err)
@@ -187,35 +191,57 @@ func (s *AllanimeScaper) Search(query string, mode string) ([]scraper.SearchResu
 		return nil, fmt.Errorf("error reading response: %v", err)
 	}
 
-	var apiResponse response
-	err = json.Unmarshal(body, &apiResponse)
+	fmt.Printf("API Response: %s\n", string(body))
+
+	var response struct {
+		Data struct {
+			Shows struct {
+				Edges []struct {
+					ID                string      `json:"_id"`
+					Name              string      `json:"name"`
+					EnglishName       string      `json:"englishName"`
+					AvailableEpisodes interface{} `json:"availableEpisodes"`
+					Status            string      `json:"status"`
+					Type              string      `json:"type"`
+				} `json:"edges"`
+			} `json:"shows"`
+		} `json:"data"`
+	}
+
+	err = json.Unmarshal(body, &response)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing response: %v", err)
 	}
 
-	searchResults := make([]scraper.SearchResult, 0)
-	for _, anime := range apiResponse.Data.Shows.Edges {
-		// Future: Could include total episodes count in the result if needed
-		alternateTitles := make(map[string]string)
-		if anime.EnglishName != "" {
-			alternateTitles["en"] = anime.EnglishName
+	var animes []scraper.Anime
+	for _, show := range response.Data.Shows.Edges {
+		var episodes int
+		if eps, ok := show.AvailableEpisodes.(map[string]interface{}); ok {
+			if subEps, ok := eps["sub"].(float64); ok {
+				episodes = int(subEps)
+			}
 		}
 
-		searchResults = append(searchResults, scraper.SearchResult{
-			ID:              anime.ID,
-			Title:           anime.Name,
-			AlternateTitles: alternateTitles,
-			Type:            anime.Type,
-			Status:          anime.Status,
-			Thumbnail:       "", // We'd need to add this to the GraphQL query
+		alternativeTitles := []string{}
+		if show.EnglishName != "" {
+			alternativeTitles = append(alternativeTitles, show.EnglishName)
+		}
+
+		animes = append(animes, scraper.Anime{
+			ID:                show.ID,
+			Title:             show.Name,
+			AlternativeTitles: alternativeTitles,
+			Status:            show.Status,
+			Episodes:          episodes,
+			SubDub:            "sub",
 		})
 	}
 
-	return searchResults, nil
+	return animes, nil
 }
 
-// GetEpisodeList retrieves the list of available episodes for an anime
-func (s *AllanimeScaper) GetEpisodeList(animeID string, mode string) ([]scraper.EpisodeInfo, error) {
+// GetEpisodeList retrieves the list of episodes for an anime
+func (s *AllanimeScaper) GetEpisodeList(animeID string) ([]scraper.Episode, error) {
 	episodesListGql := `query ($showId: String!) { show( _id: $showId ) { _id availableEpisodesDetail }}`
 
 	variables := map[string]interface{}{
@@ -262,48 +288,54 @@ func (s *AllanimeScaper) GetEpisodeList(animeID string, mode string) ([]scraper.
 		return nil, fmt.Errorf("error parsing response: %v", err)
 	}
 
-	var episodeNumbers []float64
-	if eps, ok := response.Data.Show.AvailableEpisodesDetail[mode].([]interface{}); ok {
+	var episodes []scraper.Episode
+	if eps, ok := response.Data.Show.AvailableEpisodesDetail["sub"].([]interface{}); ok {
 		for _, ep := range eps {
 			if epNum, err := strconv.ParseFloat(fmt.Sprintf("%v", ep), 64); err == nil {
-				episodeNumbers = append(episodeNumbers, epNum)
+				episodes = append(episodes, scraper.Episode{
+					ID:            animeID,
+					EpisodeNumber: epNum,
+					DateUpload:    time.Now().Unix(), // We don't have actual upload dates
+				})
 			}
 		}
 	}
 
-	// Sort episodes numerically
-	sort.Float64s(episodeNumbers)
-
-	episodeList := make([]scraper.EpisodeInfo, len(episodeNumbers))
-	for i, epNum := range episodeNumbers {
-		episodeList[i] = scraper.EpisodeInfo{
-			Number: epNum,
-		}
-	}
-
-	return episodeList, nil
+	return episodes, nil
 }
 
-// GetStreamInfo retrieves stream information for a specific episode
-func (s *AllanimeScaper) GetStreamInfo(animeID string, episodeNumber float64, mode string) ([]scraper.StreamInfo, error) {
+// LinkPriorities defines the priority order for video sources
+var LinkPriorities = []string{
+	"sharepoint.com",
+	"wixmp.com",
+	"dropbox.com",
+	"wetransfer.com",
+	"gogoanime.com",
+}
+
+func (s *AllanimeScaper) GetVideoList(animeID string, episodeNumber float64) (scraper.VideoResponse, error) {
 	query := `query($showId:String!,$translationType:VaildTranslationTypeEnumType!,$episodeString:String!){episode(showId:$showId,translationType:$translationType,episodeString:$episodeString){episodeString sourceUrls}}`
 
 	variables := map[string]interface{}{
 		"showId":          animeID,
-		"translationType": mode,
+		"translationType": "sub",
 		"episodeString":   fmt.Sprintf("%v", episodeNumber),
 	}
 
 	variablesJSON, err := json.Marshal(variables)
 	if err != nil {
-		return nil, fmt.Errorf("error encoding variables: %v", err)
+		return scraper.VideoResponse{}, fmt.Errorf("error encoding variables: %v", err)
 	}
 
-	reqURL := fmt.Sprintf("%s?variables=%s&query=%s", s.allanimeAPI, url.QueryEscape(string(variablesJSON)), url.QueryEscape(query))
+	values := url.Values{}
+	values.Set("query", query)
+	values.Set("variables", string(variablesJSON))
+
+	reqURL := fmt.Sprintf("%s?%s", s.allanimeAPI, values.Encode())
 
 	req, err := http.NewRequest("GET", reqURL, nil)
 	if err != nil {
-		return nil, fmt.Errorf("error creating request: %v", err)
+		return scraper.VideoResponse{}, fmt.Errorf("error creating request: %v", err)
 	}
 	req.Header.Set("User-Agent", s.agent)
 	req.Header.Set("Referer", s.allanimeRef)
@@ -311,20 +343,23 @@ func (s *AllanimeScaper) GetStreamInfo(animeID string, episodeNumber float64, mo
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("error making request: %v", err)
+		return scraper.VideoResponse{}, fmt.Errorf("error making request: %v", err)
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("error reading response: %v", err)
+		return scraper.VideoResponse{}, fmt.Errorf("error reading response: %v", err)
 	}
 
 	var response struct {
 		Data struct {
 			Episode struct {
 				SourceUrls []struct {
-					SourceUrl string `json:"sourceUrl"`
+					SourceUrl  string  `json:"sourceUrl"`
+					Priority   float64 `json:"priority"`
+					SourceName string  `json:"sourceName"`
+					Type       string  `json:"type"`
 				} `json:"sourceUrls"`
 			} `json:"episode"`
 		} `json:"data"`
@@ -332,237 +367,211 @@ func (s *AllanimeScaper) GetStreamInfo(animeID string, episodeNumber float64, mo
 
 	err = json.Unmarshal(body, &response)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing response: %v", err)
+		return scraper.VideoResponse{}, fmt.Errorf("error parsing response: %v", err)
 	}
 
-	validURLs := make([]string, 0)
-	highestPriority := -1
-	var highestPriorityURL string
-
-	// LinkPriorities lists the preferred domains in order
-	LinkPriorities := []string{"kraken", "dolphin", "duck"}
-
-	// First pass: collect valid URLs and find highest priority one
-	for _, url := range response.Data.Episode.SourceUrls {
-		if len(url.SourceUrl) > 2 && unicode.IsDigit(rune(url.SourceUrl[2])) {
-			if strings.HasPrefix(url.SourceUrl, "--") {
-				decodedURL := s.decodeProviderID(url.SourceUrl[2:])
-				if strings.Contains(decodedURL, LinkPriorities[0]) {
-					priority := int(url.SourceUrl[2] - '0')
-					if priority > highestPriority {
-						highestPriority = priority
-						highestPriorityURL = url.SourceUrl
-					}
-				} else {
-					validURLs = append(validURLs, url.SourceUrl)
-				}
-			} else {
-				validURLs = append(validURLs, url.SourceUrl)
-			}
-		}
+	type streamInfo struct {
+		url      string
+		quality  string
+		priority int
 	}
 
-	// If we found a highest priority URL, use only that
-	if highestPriorityURL != "" {
-		validURLs = []string{highestPriorityURL}
-	}
+	var streams []streamInfo
 
-	if len(validURLs) == 0 {
-		return nil, fmt.Errorf("no valid source URLs found in response")
-	}
-
-	// Create channels for results and a slice to store ordered results
-	results := make(chan struct {
-		index int
-		links []scraper.StreamInfo
-		err   error
-	}, len(validURLs))
-	orderedResults := make([][]scraper.StreamInfo, len(validURLs))
-
-	// Add a channel for high priority links
-	highPriorityLink := make(chan []scraper.StreamInfo, 1)
-
-	// Create rate limiter
-	rateLimiter := time.NewTicker(50 * time.Millisecond)
-	defer rateLimiter.Stop()
-
-	// Launch goroutines
-	// remainingURLs := len(validURLs)
-	for i, sourceUrl := range validURLs {
-		go func(idx int, url string) {
-			<-rateLimiter.C // Rate limit the requests
-
-			decodedProviderID := s.decodeProviderID(url[2:])
-			extractedLinks := s.extractLinks(decodedProviderID)
-
-			if extractedLinks == nil {
-				results <- struct {
-					index int
-					links []scraper.StreamInfo
-					err   error
-				}{
-					index: idx,
-					err:   fmt.Errorf("failed to extract links for provider %s", decodedProviderID),
-				}
-				return
+	// Process all sources
+	for _, source := range response.Data.Episode.SourceUrls {
+		if strings.HasPrefix(source.SourceUrl, "--") {
+			decodedProviderID := s.decodeProviderID(source.SourceUrl[2:])
+			extractedLinks, err := s.extractLinks(decodedProviderID)
+			if err != nil {
+				continue
 			}
 
-			linksInterface, ok := extractedLinks["links"].([]interface{})
-			if !ok {
-				results <- struct {
-					index int
-					links []scraper.StreamInfo
-					err   error
-				}{
-					index: idx,
-					err:   fmt.Errorf("links field is not []interface{} for provider %s", decodedProviderID),
-				}
-				return
-			}
+			if linksInterface, ok := extractedLinks["links"].([]interface{}); ok {
+				for _, linkInterface := range linksInterface {
+					if linkMap, ok := linkInterface.(map[string]interface{}); ok {
+						if link, ok := linkMap["link"].(string); ok {
+							quality, _ := linkMap["resolutionStr"].(string)
+							var finalURL string
+							if strings.HasPrefix(link, "--") {
+								decodedLink := s.decodeProviderID(link[2:])
+								if !strings.HasPrefix(decodedLink, "http") {
+									finalURL = "https://" + decodedLink
+								} else {
+									finalURL = decodedLink
+								}
+							} else {
+								finalURL = link
+							}
 
-			var streamInfos []scraper.StreamInfo
-			for _, linkInterface := range linksInterface {
-				linkMap, ok := linkInterface.(map[string]interface{})
-				if !ok {
-					continue
-				}
+							// Check priority based on domain
+							priority := -1
+							for i, domain := range LinkPriorities {
+								if strings.Contains(finalURL, domain) {
+									priority = len(LinkPriorities) - i
+									break
+								}
+							}
 
-				link, ok := linkMap["link"].(string)
-				if !ok {
-					continue
-				}
-
-				quality, _ := linkMap["resolutionStr"].(string)
-				// Only decode if the link starts with "--", otherwise use as is
-				var finalURL string
-				if strings.HasPrefix(link, "--") {
-					decodedLink := s.decodeProviderID(link[2:])
-					// Ensure the URL starts with https:// if it doesn't already
-					if !strings.HasPrefix(decodedLink, "http") {
-						finalURL = "https://" + decodedLink
-					} else {
-						finalURL = decodedLink
-					}
-				} else {
-					finalURL = link
-				}
-
-				streamInfo := scraper.StreamInfo{
-					URL:     finalURL,
-					Quality: quality,
-					Format:  "mp4", // Default format
-				}
-				streamInfos = append(streamInfos, streamInfo)
-
-				// Check if this is a high priority link
-				for _, domain := range LinkPriorities[:3] { // Check only top 3 priority domains
-					if strings.Contains(link, domain) {
-						select {
-						case highPriorityLink <- []scraper.StreamInfo{streamInfo}:
-						default:
-							// Channel already has a high priority link
+							streams = append(streams, streamInfo{
+								url:      finalURL,
+								quality:  quality,
+								priority: priority,
+							})
 						}
-						break
 					}
 				}
 			}
-
-			results <- struct {
-				index int
-				links []scraper.StreamInfo
-				err   error
-			}{
-				index: idx,
-				links: streamInfos,
-			}
-		}(i, sourceUrl)
-	}
-
-	// Collect results with timeout
-	timeout := time.After(10 * time.Second)
-	var collectedErrors []error
-	successCount := 0
-
-	// First, try to get a high priority link
-	select {
-	case links := <-highPriorityLink:
-		return links, nil
-	case <-time.After(2 * time.Second): // Wait only briefly for high priority link
-		// No high priority link found quickly, proceed with normal collection
-	}
-
-	// Collect results maintaining order
-	for successCount < len(validURLs) {
-		select {
-		case res := <-results:
-			if res.err != nil {
-				collectedErrors = append(collectedErrors, res.err)
-			} else {
-				orderedResults[res.index] = res.links
-				successCount++
-			}
-		case <-timeout:
-			if successCount > 0 {
-				// Flatten available results
-				var allStreams []scraper.StreamInfo
-				for _, streams := range orderedResults {
-					allStreams = append(allStreams, streams...)
+		} else if strings.HasPrefix(source.SourceUrl, "https://") {
+			// Check priority based on domain
+			priority := -1
+			for i, domain := range LinkPriorities {
+				if strings.Contains(source.SourceUrl, domain) {
+					priority = len(LinkPriorities) - i
+					break
 				}
-				return allStreams, nil
 			}
-			return nil, fmt.Errorf("timeout waiting for results")
+
+			streams = append(streams, streamInfo{
+				url:      source.SourceUrl,
+				quality:  source.SourceName,
+				priority: priority,
+			})
 		}
 	}
 
-	// Flatten and return results
-	var allStreams []scraper.StreamInfo
-	for _, streams := range orderedResults {
-		allStreams = append(allStreams, streams...)
-	}
-	if len(allStreams) == 0 {
-		return nil, fmt.Errorf("no valid links found from %d URLs: %v", len(validURLs), collectedErrors)
+	// Sort streams by priority (highest first)
+	sort.Slice(streams, func(i, j int) bool {
+		return streams[i].priority > streams[j].priority
+	})
+
+	// Convert to scraper.Video format
+	var result []scraper.Video
+	for _, stream := range streams {
+		result = append(result, scraper.Video{
+			ID:       animeID,
+			Quality:  stream.quality,
+			VideoURL: stream.url,
+		})
 	}
 
-	return allStreams, nil
+	if len(result) == 0 {
+		return scraper.VideoResponse{}, fmt.Errorf("no valid streams found")
+	}
+
+	return scraper.VideoResponse{
+		Streams: result,
+	}, nil
 }
 
 func main() {
-	action := flag.String("action", "info", "Action to perform: info, search, episodes, streams")
-	query := flag.String("query", "", "Search query (for action=search)")
-	id := flag.String("id", "", "Anime ID for episodes/streams")
-	episode := flag.Float64("episode", 0, "Episode number for streams")
-	mode := flag.String("mode", "sub", "Mode: sub or dub")
+	// Define command-line flags
+	var (
+		help     = flag.Bool("h", false, "Show help message")
+		query    = flag.String("query", "", "Search query")
+		page     = flag.Int("page", 1, "Page number")
+		filters  = flag.String("filters", "", "JSON filters")
+		animeURL = flag.String("anime", "", "Anime URL")
+		episode  = flag.Float64("episode", 0, "Episode number")
+		sourceID = flag.String("source", "3160569130087668532", "Source ID (optional, defaults to allanime)")
+	)
 
-	flag.Parse()
+	// Custom usage message
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "Usage: %s [OPTIONS] COMMAND [ARGS]...\n\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "A command-line tool for interacting with anime video sources.\n\n")
+		fmt.Fprintf(os.Stderr, "Options:\n")
+		flag.PrintDefaults()
+		fmt.Fprintf(os.Stderr, "\nCommands:\n")
+		fmt.Fprintf(os.Stderr, "  episodes        Get the list of episodes for an anime.\n")
+		fmt.Fprintf(os.Stderr, "  extension-info  Get information about a specific extension.\n")
+		fmt.Fprintf(os.Stderr, "  list-sources    List all available anime video sources.\n")
+		fmt.Fprintf(os.Stderr, "  search          Search for anime on a source.\n")
+		fmt.Fprintf(os.Stderr, "  source-info     Get information about a specific anime video source.\n")
+		fmt.Fprintf(os.Stderr, "  stream-url      Get the direct video stream URL for an anime episode.\n")
+	}
 
-	scraper := NewAllanimeScaper()
+	// Parse flags after the command
+	args := os.Args[1:]
+	if len(args) == 0 {
+		flag.Usage()
+		os.Exit(0)
+	}
+
+	command := args[0]
+	flag.CommandLine.Parse(args[1:])
+
+	if *help {
+		flag.Usage()
+		os.Exit(0)
+	}
+
+	s := NewAllanimeScaper()
 
 	var result interface{}
 	var err error
 
-	switch *action {
-	case "info":
-		result = scraper.GetInfo()
+	switch command {
+	case "extension-info":
+		result, err = s.GetExtensionInfo()
+
+	case "list-sources":
+		// Get extension info and return just the sources
+		info, err := s.GetExtensionInfo()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error getting extension info: %v\n", err)
+			os.Exit(1)
+		}
+		result = info.Sources
+
+	case "source-info":
+		// If a specific source ID is provided, verify it matches our source
+		if *sourceID != "" && *sourceID != "3160569130087668532" {
+			fmt.Fprintf(os.Stderr, "Error: invalid source ID %q\n", *sourceID)
+			os.Exit(1)
+		}
+		result, err = s.GetSourceInfo()
+
 	case "search":
 		if *query == "" {
-			err = fmt.Errorf("search query is required for action 'search'")
-			break
+			fmt.Fprintf(os.Stderr, "Error: search query is required\n")
+			os.Exit(1)
 		}
-		result, err = scraper.Search(*query, *mode)
+		// If a specific source ID is provided, verify it matches our source
+		if *sourceID != "" && *sourceID != "3160569130087668532" {
+			fmt.Fprintf(os.Stderr, "Error: invalid source ID %q\n", *sourceID)
+			os.Exit(1)
+		}
+		result, err = s.SearchAnime(*query, *page, *filters)
+
 	case "episodes":
-		if *id == "" {
-			err = fmt.Errorf("anime ID is required for action 'episodes'")
-			break
+		if *animeURL == "" {
+			fmt.Fprintf(os.Stderr, "Error: anime URL is required\n")
+			os.Exit(1)
 		}
-		result, err = scraper.GetEpisodeList(*id, *mode)
-	case "streams":
-		if *id == "" || *episode == 0 {
-			err = fmt.Errorf("anime ID and episode number are required for action 'streams'")
-			break
+		// If a specific source ID is provided, verify it matches our source
+		if *sourceID != "" && *sourceID != "3160569130087668532" {
+			fmt.Fprintf(os.Stderr, "Error: invalid source ID %q\n", *sourceID)
+			os.Exit(1)
 		}
-		result, err = scraper.GetStreamInfo(*id, *episode, *mode)
+		result, err = s.GetEpisodeList(*animeURL)
+
+	case "stream-url":
+		if *animeURL == "" || *episode == 0 {
+			fmt.Fprintf(os.Stderr, "Error: anime URL and episode number are required\n")
+			os.Exit(1)
+		}
+		// If a specific source ID is provided, verify it matches our source
+		if *sourceID != "" && *sourceID != "3160569130087668532" {
+			fmt.Fprintf(os.Stderr, "Error: invalid source ID %q\n", *sourceID)
+			os.Exit(1)
+		}
+		result, err = s.GetVideoList(*animeURL, *episode)
+
 	default:
-		err = fmt.Errorf("invalid action: %s", *action)
+		fmt.Fprintf(os.Stderr, "Error: unknown command %q\n", command)
+		flag.Usage()
+		os.Exit(1)
 	}
 
 	if err != nil {
@@ -571,9 +580,9 @@ func main() {
 	}
 
 	// Output the result as JSON
-	jsonOutput, jsonErr := json.MarshalIndent(result, "", "  ")
-	if jsonErr != nil {
-		fmt.Fprintf(os.Stderr, "Error marshalling result to JSON: %v\n", jsonErr)
+	jsonOutput, err := json.MarshalIndent(result, "", "  ")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error marshalling result to JSON: %v\n", err)
 		os.Exit(1)
 	}
 	fmt.Println(string(jsonOutput))

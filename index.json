@@ -1,0 +1,17 @@
+[
+  {
+    "name": "AllAnime",
+    "pkg": "allanime",
+    "lang": "en",
+    "version": "0.1.0",
+    "nsfw": false,
+    "sources": [
+      {
+        "name": "AllAnime",
+        "lang": "en",
+        "id": "3160569130087668532",
+        "baseUrl": "https://allanime.to"
+      }
+    ]
+  }
+] 

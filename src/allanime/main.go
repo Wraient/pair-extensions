@@ -191,7 +191,8 @@ func (s *AllanimeScaper) SearchAnime(query string, page int, filters string) ([]
 		return nil, fmt.Errorf("error reading response: %v", err)
 	}
 
-	fmt.Printf("API Response: %s\n", string(body))
+	// Debug: Uncomment the line below for API debugging
+	// fmt.Fprintf(os.Stderr, "API Response: %s\n", string(body))
 
 	var response struct {
 		Data struct {

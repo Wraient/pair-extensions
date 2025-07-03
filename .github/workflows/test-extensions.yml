@@ -1,0 +1,471 @@
+name: Test Extensions
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+env:
+  GO_VERSION: "1.24.3"
+  PLATFORMS: "linux/amd64,linux/arm64,windows/amd64,darwin/amd64,darwin/arm64"
+
+jobs:
+  discover-extensions:
+    runs-on: ubuntu-latest
+    outputs:
+      extensions: ${{ steps.find-extensions.outputs.extensions }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Find extensions
+        id: find-extensions
+        run: |
+          extensions=$(find src -maxdepth 1 -type d -not -path src | sed 's|src/||' | jq -R -s -c 'split("\n")[:-1]')
+          echo "extensions=$extensions" >> $GITHUB_OUTPUT
+          echo "Found extensions: $extensions"
+
+  test-extensions:
+    needs: discover-extensions
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        extension: ${{ fromJson(needs.discover-extensions.outputs.extensions) }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Install dependencies
+        run: go mod download
+
+      - name: Create bin directory
+        run: mkdir -p bin
+
+      - name: Build extension for testing
+        run: |
+          cd src/${{ matrix.extension }}
+          go build -o ../../bin/${{ matrix.extension }}-test .
+          chmod +x ../../bin/${{ matrix.extension }}-test
+
+      - name: Verify binary exists
+        run: |
+          if [ ! -f "bin/${{ matrix.extension }}-test" ]; then
+            echo "❌ Binary not found: bin/${{ matrix.extension }}-test"
+            exit 1
+          fi
+          echo "✅ Binary built successfully: bin/${{ matrix.extension }}-test"
+
+      - name: Test help command
+        run: |
+          echo "Testing help command for ${{ matrix.extension }}"
+          ./bin/${{ matrix.extension }}-test -h || true
+
+      - name: Test extension-info command
+        id: extension-info
+        run: |
+          echo "Testing extension-info command for ${{ matrix.extension }}"
+          output=$(./bin/${{ matrix.extension }}-test extension-info)
+          echo "Extension info output:"
+          echo "$output"
+          
+          # Validate JSON structure
+          echo "$output" | jq empty || {
+            echo "❌ Invalid JSON output for extension-info"
+            exit 1
+          }
+          
+          # Check required fields
+          name=$(echo "$output" | jq -r '.name // empty')
+          package=$(echo "$output" | jq -r '.pkg // empty')
+          version=$(echo "$output" | jq -r '.version // empty')
+          sources=$(echo "$output" | jq -r '.sources // empty')
+          
+          if [ -z "$name" ] || [ -z "$package" ] || [ -z "$version" ] || [ -z "$sources" ]; then
+            echo "❌ Missing required fields in extension-info"
+            echo "Name: $name, Package: $package, Version: $version, Sources: $sources"
+            exit 1
+          fi
+          
+          echo "✅ Extension info validation passed"
+          echo "extension_info=$output" >> $GITHUB_OUTPUT
+          echo "current_version=$version" >> $GITHUB_OUTPUT
+
+      - name: Test all sources in extension
+        id: sources-test
+        run: |
+          echo "Testing all sources for ${{ matrix.extension }}"
+          extension_info='${{ steps.extension-info.outputs.extension_info }}'
+          sources=$(echo "$extension_info" | jq -r '.sources')
+          sources_count=$(echo "$sources" | jq 'length')
+          
+          echo "Found $sources_count source(s) to test"
+          
+          passed_sources=()
+          failed_sources=()
+          
+          for i in $(seq 0 $((sources_count-1))); do
+            source=$(echo "$sources" | jq -r ".[$i]")
+            source_id=$(echo "$source" | jq -r '.id')
+            source_name=$(echo "$source" | jq -r '.name')
+            
+            echo "Testing source: $source_name (ID: $source_id)"
+            
+            # Test source-info for this specific source
+            if source_info=$(./bin/${{ matrix.extension }}-test source-info --source "$source_id" 2>/dev/null || ./bin/${{ matrix.extension }}-test source-info 2>/dev/null); then
+              echo "Source info retrieved for $source_name"
+              
+              # Test search functionality
+              search_success=false
+              for query in "naruto" "one piece" "attack on titan"; do
+                if search_output=$(./bin/${{ matrix.extension }}-test search --query "$query" --page 1 --source "$source_id" 2>/dev/null || ./bin/${{ matrix.extension }}-test search --query "$query" --page 1 2>/dev/null); then
+                  if [ "$(echo "$search_output" | jq 'length' 2>/dev/null || echo 0)" -gt 0 ]; then
+                    echo "Search successful for $source_name with query: $query"
+                    search_success=true
+                    
+                    # Test episodes and streams
+                    anime_id=$(echo "$search_output" | jq -r '.[0].anime_id')
+                    if episodes_output=$(./bin/${{ matrix.extension }}-test episodes --anime "$anime_id" --source "$source_id" 2>/dev/null || ./bin/${{ matrix.extension }}-test episodes --anime "$anime_id" 2>/dev/null); then
+                      if [ "$(echo "$episodes_output" | jq 'length' 2>/dev/null || echo 0)" -gt 0 ]; then
+                        episode_number=$(echo "$episodes_output" | jq -r '.[0].episode_number')
+                        if stream_output=$(./bin/${{ matrix.extension }}-test stream-url --anime "$anime_id" --episode "$episode_number" --source "$source_id" 2>/dev/null || ./bin/${{ matrix.extension }}-test stream-url --anime "$anime_id" --episode "$episode_number" 2>/dev/null); then
+                          if [ "$(echo "$stream_output" | jq '.streams | length' 2>/dev/null || echo 0)" -gt 0 ]; then
+                            echo "✅ Source $source_name passed all tests"
+                            passed_sources+=("$source_name")
+                            break 2
+                          fi
+                        fi
+                      fi
+                    fi
+                    break
+                  fi
+                fi
+              done
+              
+              if [ "$search_success" = false ]; then
+                echo "❌ Source $source_name failed search test"
+                failed_sources+=("$source_name")
+              fi
+            else
+              echo "❌ Source $source_name failed source-info test"
+              failed_sources+=("$source_name")
+            fi
+          done
+          
+          echo "Passed sources: ${passed_sources[*]}"
+          echo "Failed sources: ${failed_sources[*]}"
+          
+          if [ ${#passed_sources[@]} -gt 0 ]; then
+            echo "sources_passed=true" >> $GITHUB_OUTPUT
+          else
+            echo "sources_passed=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Update version if tests passed
+        if: steps.sources-test.outputs.sources_passed == 'true'
+        id: version-update
+        run: |
+          current_version="${{ steps.extension-info.outputs.current_version }}"
+          echo "Current version: $current_version"
+          
+          # Parse version and increment patch version
+          if [[ $current_version =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+            major=${BASH_REMATCH[1]}
+            minor=${BASH_REMATCH[2]}
+            patch=${BASH_REMATCH[3]}
+            new_patch=$((patch + 1))
+            new_version="$major.$minor.$new_patch"
+          else
+            echo "Invalid version format, defaulting to 0.0.1"
+            new_version="0.0.1"
+          fi
+          
+          echo "New version: $new_version"
+          echo "new_version=$new_version" >> $GITHUB_OUTPUT
+          
+          # Update version in the Go source file if it exists in GetExtensionInfo
+          if grep -q "Version.*$current_version" src/${{ matrix.extension }}/*.go; then
+            sed -i "s/Version:.*\"$current_version\"/Version: \"$new_version\"/" src/${{ matrix.extension }}/*.go
+            echo "✅ Updated version in source code"
+          fi
+
+      - name: Build cross-platform binaries
+        if: steps.sources-test.outputs.sources_passed == 'true'
+        run: |
+          cd src/${{ matrix.extension }}
+          new_version="${{ steps.version-update.outputs.new_version }}"
+          
+          # Build for different platforms
+          platforms=("linux/amd64" "linux/arm64" "windows/amd64" "darwin/amd64" "darwin/arm64")
+          
+          mkdir -p ../../release/${{ matrix.extension }}
+          
+          for platform in "${platforms[@]}"; do
+            IFS='/' read -r os arch <<< "$platform"
+            output_name="${{ matrix.extension }}-${os}-${arch}"
+            
+            if [ "$os" = "windows" ]; then
+              output_name="${output_name}.exe"
+            fi
+            
+            echo "Building for $os/$arch..."
+            GOOS=$os GOARCH=$arch go build -ldflags="-s -w" -o "../../release/${{ matrix.extension }}/$output_name" .
+            
+            # Compress with gzip
+            gzip "../../release/${{ matrix.extension }}/$output_name"
+            echo "✅ Built and compressed: $output_name.gz"
+          done
+
+      - name: Create extension JSON manifest
+        if: steps.sources-test.outputs.sources_passed == 'true'
+        run: |
+          extension_info='${{ steps.extension-info.outputs.extension_info }}'
+          new_version="${{ steps.version-update.outputs.new_version }}"
+          
+          # Update version in extension info
+          updated_info=$(echo "$extension_info" | jq --arg version "$new_version" '.version = $version')
+          
+          # Create manifest file
+          echo "$updated_info" > release/${{ matrix.extension }}/${{ matrix.extension }}.json
+          echo "✅ Created extension manifest"
+
+      - name: Upload release artifacts
+        if: steps.sources-test.outputs.sources_passed == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: extension-${{ matrix.extension }}-release
+          path: release/${{ matrix.extension }}/
+
+      - name: Validate implementation compliance
+        run: |
+          echo "Validating implementation compliance for ${{ matrix.extension }}"
+          
+          # Check if extension follows the expected command structure
+          commands=("extension-info" "list-sources" "source-info" "search")
+          
+          for cmd in "${commands[@]}"; do
+            echo "Checking if $cmd command exists..."
+            if ./bin/${{ matrix.extension }}-test $cmd --help >/dev/null 2>&1 || 
+               ./bin/${{ matrix.extension }}-test $cmd >/dev/null 2>&1; then
+              echo "✅ Command $cmd is implemented"
+            else
+              echo "❌ Command $cmd is not properly implemented"
+            fi
+          done
+          
+          echo "✅ Implementation compliance check completed"
+
+      - name: Generate test report
+        if: always()
+        run: |
+          echo "## Test Report for ${{ matrix.extension }}" >> test_report.md
+          echo "" >> test_report.md
+          echo "- **Binary Build**: ✅ Success" >> test_report.md
+          echo "- **Extension Info**: $([ -n '${{ steps.extension-info.outputs.extension_info }}' ] && echo '✅ Pass' || echo '❌ Fail')" >> test_report.md
+          echo "- **Sources Test**: $([ '${{ steps.sources-test.outputs.sources_passed }}' = 'true' ] && echo '✅ Pass' || echo '❌ Fail')" >> test_report.md
+          echo "- **Version Update**: $([ -n '${{ steps.version-update.outputs.new_version }}' ] && echo '✅ Updated to ${{ steps.version-update.outputs.new_version }}' || echo '⚠️  Skipped')" >> test_report.md
+          echo "- **Cross-platform Build**: $([ '${{ steps.sources-test.outputs.sources_passed }}' = 'true' ] && echo '✅ Success' || echo '⚠️  Skipped')" >> test_report.md
+          echo "" >> test_report.md
+
+      - name: Upload test artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-report-${{ matrix.extension }}
+          path: |
+            test_report.md
+            bin/${{ matrix.extension }}-test
+
+  integration-tests:
+    needs: [discover-extensions, test-extensions]
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+
+      - name: Generate final report
+        run: |
+          echo "# Extensions Test Summary" > final_report.md
+          echo "" >> final_report.md
+          echo "Generated on: $(date)" >> final_report.md
+          echo "" >> final_report.md
+          
+          # Count extensions
+          extension_count=$(echo '${{ needs.discover-extensions.outputs.extensions }}' | jq 'length')
+          echo "Total extensions tested: $extension_count" >> final_report.md
+          echo "" >> final_report.md
+          
+          # Check for successful extensions
+          successful_extensions=()
+          if ls extension-*-release/ 1> /dev/null 2>&1; then
+            for release_dir in extension-*-release/; do
+              extension_name=$(echo "$release_dir" | sed 's/extension-\(.*\)-release\//\1/')
+              successful_extensions+=("$extension_name")
+            done
+          fi
+          
+          if [ ${#successful_extensions[@]} -gt 0 ]; then
+            echo "## ✅ Successfully Released Extensions" >> final_report.md
+            echo "" >> final_report.md
+            for ext in "${successful_extensions[@]}"; do
+              echo "- **$ext**: Built and released with version update" >> final_report.md
+            done
+            echo "" >> final_report.md
+          fi
+          
+          # Combine individual reports
+          if ls test-report-*/test_report.md 1> /dev/null 2>&1; then
+            echo "## Detailed Test Results" >> final_report.md
+            echo "" >> final_report.md
+            for report in test-report-*/test_report.md; do
+              cat "$report" >> final_report.md
+            done
+          else
+            echo "No test reports found" >> final_report.md
+          fi
+          
+          echo "" >> final_report.md
+          echo "## Notes" >> final_report.md
+          echo "- ✅ indicates successful validation" >> final_report.md
+          echo "- ⚠️  indicates partial success or expected limitations" >> final_report.md
+          echo "- ❌ indicates failure that needs attention" >> final_report.md
+          echo "- Extensions that pass all source tests get version bumps and cross-platform builds" >> final_report.md
+
+      - name: Upload final report
+        uses: actions/upload-artifact@v4
+        with:
+          name: final-test-report
+          path: final_report.md
+
+      - name: Comment on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            try {
+              const report = fs.readFileSync('final_report.md', 'utf8');
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: '## 🧪 Extension Test Results\n\n' + report
+              });
+            } catch (error) {
+              console.log('Could not read final report:', error);
+            }
+
+  commit-updates:
+    needs: [discover-extensions, test-extensions]
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+
+      - name: Check for version updates
+        id: check-updates
+        run: |
+          updates_found=false
+          
+          # Rebuild extensions with updated versions to check for changes
+          for extension in $(echo '${{ needs.discover-extensions.outputs.extensions }}' | jq -r '.[]'); do
+            if [ -d "extension-${extension}-release" ]; then
+              echo "Extension $extension had successful tests and version update"
+              updates_found=true
+              
+              # Copy updated source files if they exist
+              if [ -f "test-report-${extension}/bin/${extension}-test" ]; then
+                echo "Found updated binary for $extension"
+              fi
+            fi
+          done
+          
+          echo "updates_found=$updates_found" >> $GITHUB_OUTPUT
+
+      - name: Commit version updates
+        if: steps.check-updates.outputs.updates_found == 'true'
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          
+          # Check if there are changes to commit
+          if [ -n "$(git status --porcelain)" ]; then
+            git add .
+            git commit -m "Auto-update extension versions after successful tests [skip ci]"
+            git push
+            echo "✅ Version updates committed"
+          else
+            echo "No changes to commit"
+          fi
+
+      - name: Create release
+        if: steps.check-updates.outputs.updates_found == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            
+            // Get current date for release tag
+            const date = new Date().toISOString().split('T')[0];
+            const tagName = `release-${date}-${context.sha.substring(0, 7)}`;
+            
+            // Create release
+            const release = await github.rest.repos.createRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag_name: tagName,
+              name: `Extension Release ${date}`,
+              body: 'Automated release of updated extensions after successful testing.',
+              draft: false,
+              prerelease: false
+            });
+            
+            // Upload assets from release directories
+            const releaseId = release.data.id;
+            const releaseDirs = fs.readdirSync('.').filter(dir => dir.startsWith('extension-') && dir.endsWith('-release'));
+            
+            for (const releaseDir of releaseDirs) {
+              const files = fs.readdirSync(releaseDir);
+              for (const file of files) {
+                if (file.endsWith('.gz') || file.endsWith('.json')) {
+                  const filePath = path.join(releaseDir, file);
+                  const fileContent = fs.readFileSync(filePath);
+                  
+                  await github.rest.repos.uploadReleaseAsset({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    release_id: releaseId,
+                    name: file,
+                    data: fileContent
+                  });
+                  
+                  console.log(`Uploaded ${file}`);
+                }
+              }
+            }

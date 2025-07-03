@@ -96,7 +96,10 @@ jobs:
           fi
           
           echo "✅ Extension info validation passed"
-          echo "extension_info=$output" >> $GITHUB_OUTPUT
+          # Use EOF delimiter to properly handle multi-line JSON output
+          echo "extension_info<<EOF" >> $GITHUB_OUTPUT
+          echo "$output" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
           echo "current_version=$version" >> $GITHUB_OUTPUT
 
       - name: Test all sources in extension
@@ -227,11 +230,11 @@ jobs:
       - name: Create extension JSON manifest
         if: steps.sources-test.outputs.sources_passed == 'true'
         run: |
-          extension_info='${{ steps.extension-info.outputs.extension_info }}'
           new_version="${{ steps.version-update.outputs.new_version }}"
           
-          # Update version in extension info
-          updated_info=$(echo "$extension_info" | jq --arg version "$new_version" '.version = $version')
+          # Re-run extension-info to get fresh JSON and update version
+          fresh_info=$(./bin/${{ matrix.extension }}-test extension-info)
+          updated_info=$(echo "$fresh_info" | jq --arg version "$new_version" '.version = $version')
           
           # Create manifest file
           echo "$updated_info" > release/${{ matrix.extension }}/${{ matrix.extension }}.json

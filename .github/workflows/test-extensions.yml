@@ -193,12 +193,7 @@ jobs:
           
           echo "New version: $new_version"
           echo "new_version=$new_version" >> $GITHUB_OUTPUT
-          
-          # Update version in the Go source file if it exists in GetExtensionInfo
-          if grep -q "Version.*$current_version" src/${{ matrix.extension }}/*.go; then
-            sed -i "s/Version:.*\"$current_version\"/Version: \"$new_version\"/" src/${{ matrix.extension }}/*.go
-            echo "✅ Updated version in source code"
-          fi
+          echo "✅ Version will be updated in binaries only"
 
       - name: Build cross-platform binaries
         if: steps.sources-test.outputs.sources_passed == 'true'
@@ -254,7 +249,11 @@ jobs:
         with:
           name: binaries-${{ matrix.extension }}
           path: |
-            bin/${{ matrix.extension }}-*
+            bin/${{ matrix.extension }}-linux-amd64
+            bin/${{ matrix.extension }}-linux-arm64
+            bin/${{ matrix.extension }}-windows-amd64.exe
+            bin/${{ matrix.extension }}-darwin-amd64
+            bin/${{ matrix.extension }}-darwin-arm64
             bin/${{ matrix.extension }}.json
 
       - name: Validate implementation compliance
@@ -293,9 +292,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: test-report-${{ matrix.extension }}
-          path: |
-            test_report.md
-            bin/${{ matrix.extension }}-test
+          path: test_report.md
 
   integration-tests:
     needs: [discover-extensions, test-extensions]
@@ -434,6 +431,18 @@ jobs:
             mkdir -p bin
             echo "# Extension Binaries Repository" > README.md
             echo "This branch contains compiled binaries for all extensions." >> README.md
+            echo "" >> README.md
+            echo "## Available Extensions" >> README.md
+            echo "See \`index.json\` for a complete list of available extensions with their metadata." >> README.md
+            echo "" >> README.md
+            echo "## Binary Naming Convention" >> README.md
+            echo "- \`extension-name-linux-amd64\` - Linux x86_64" >> README.md
+            echo "- \`extension-name-linux-arm64\` - Linux ARM64" >> README.md
+            echo "- \`extension-name-windows-amd64.exe\` - Windows x86_64" >> README.md
+            echo "- \`extension-name-darwin-amd64\` - macOS x86_64" >> README.md
+            echo "- \`extension-name-darwin-arm64\` - macOS ARM64" >> README.md
+            echo "" >> README.md
+            echo "All binaries (except macOS) are compressed with UPX for smaller file sizes." >> README.md
             git add README.md
             git commit -m "Initialize repo branch"
           fi
@@ -449,6 +458,31 @@ jobs:
             fi
           done
           
+          # Create or update index.json
+          echo "Creating index.json..."
+          extensions_array="[]"
+          
+          for extension in $(echo '${{ needs.discover-extensions.outputs.extensions }}' | jq -r '.[]'); do
+            if [ -f "bin/${extension}.json" ]; then
+              extension_info=$(cat "bin/${extension}.json")
+              extensions_array=$(echo "$extensions_array" | jq --argjson ext "$extension_info" '. += [$ext]')
+            fi
+          done
+          
+          # Create index.json with metadata
+          index_json=$(jq -n \
+            --argjson extensions "$extensions_array" \
+            --arg updated "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --arg total "$(echo "$extensions_array" | jq 'length')" \
+            '{
+              "updated": $updated,
+              "total_extensions": ($total | tonumber),
+              "extensions": $extensions
+            }')
+          
+          echo "$index_json" > bin/index.json
+          echo "✅ Created index.json with $(echo "$extensions_array" | jq 'length') extensions"
+          
           # List what we have
           echo "Files in bin directory:"
           ls -la bin/
@@ -459,32 +493,11 @@ jobs:
           # Check if there are changes to commit
           if [ -n "$(git status --porcelain)" ]; then
             git add bin/
-            git commit -m "Update extension binaries - $(date '+%Y-%m-%d %H:%M:%S')"
+            git commit -m "Update extension binaries and index - $(date '+%Y-%m-%d %H:%M:%S')"
             git push origin repo
-            echo "✅ Binaries pushed to repo branch"
+            echo "✅ Binaries and index pushed to repo branch"
           else
             echo "No changes to commit"
           fi
 
-      - name: Update main branch with version changes
-        if: steps.check-updates.outputs.updates_found == 'true'
-        run: |
-          # Switch back to main branch to commit version updates
-          git checkout main
-          git pull origin main
-          
-          # Update version in source files if needed
-          for extension in $(echo '${{ needs.discover-extensions.outputs.extensions }}' | jq -r '.[]'); do
-            if [ -d "binaries-${extension}" ]; then
-              echo "Checking version updates for $extension"
-              # The version updates were already made in the test phase
-            fi
-          done
-          
-          # Commit any version changes to main branch
-          if [ -n "$(git status --porcelain)" ]; then
-            git add .
-            git commit -m "Auto-update extension versions after successful tests [skip ci]"
-            git push origin main
-            echo "✅ Version updates committed to main branch"
-          fi
+

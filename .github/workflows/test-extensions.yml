@@ -206,10 +206,14 @@ jobs:
           cd src/${{ matrix.extension }}
           new_version="${{ steps.version-update.outputs.new_version }}"
           
+          # Install UPX for compression
+          sudo apt-get update
+          sudo apt-get install -y upx-ucl
+          
           # Build for different platforms
           platforms=("linux/amd64" "linux/arm64" "windows/amd64" "darwin/amd64" "darwin/arm64")
           
-          mkdir -p ../../release/${{ matrix.extension }}
+          mkdir -p ../../bin
           
           for platform in "${platforms[@]}"; do
             IFS='/' read -r os arch <<< "$platform"
@@ -220,11 +224,15 @@ jobs:
             fi
             
             echo "Building for $os/$arch..."
-            GOOS=$os GOARCH=$arch go build -ldflags="-s -w" -o "../../release/${{ matrix.extension }}/$output_name" .
+            GOOS=$os GOARCH=$arch go build -ldflags="-s -w" -o "../../bin/$output_name" .
             
-            # Compress with gzip
-            gzip "../../release/${{ matrix.extension }}/$output_name"
-            echo "✅ Built and compressed: $output_name.gz"
+            # Compress with UPX (skip for darwin as UPX doesn't work well with macOS binaries)
+            if [ "$os" != "darwin" ]; then
+              upx --best --lzma "../../bin/$output_name"
+              echo "✅ Built and compressed with UPX: $output_name"
+            else
+              echo "✅ Built (UPX skipped for macOS): $output_name"
+            fi
           done
 
       - name: Create extension JSON manifest
@@ -236,16 +244,18 @@ jobs:
           fresh_info=$(./bin/${{ matrix.extension }}-test extension-info)
           updated_info=$(echo "$fresh_info" | jq --arg version "$new_version" '.version = $version')
           
-          # Create manifest file
-          echo "$updated_info" > release/${{ matrix.extension }}/${{ matrix.extension }}.json
+          # Create manifest file in bin directory
+          echo "$updated_info" > bin/${{ matrix.extension }}.json
           echo "✅ Created extension manifest"
 
-      - name: Upload release artifacts
+      - name: Upload binaries to repo branch
         if: steps.sources-test.outputs.sources_passed == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: extension-${{ matrix.extension }}-release
-          path: release/${{ matrix.extension }}/
+          name: binaries-${{ matrix.extension }}
+          path: |
+            bin/${{ matrix.extension }}-*
+            bin/${{ matrix.extension }}.json
 
       - name: Validate implementation compliance
         run: |
@@ -313,18 +323,18 @@ jobs:
           
           # Check for successful extensions
           successful_extensions=()
-          if ls extension-*-release/ 1> /dev/null 2>&1; then
-            for release_dir in extension-*-release/; do
-              extension_name=$(echo "$release_dir" | sed 's/extension-\(.*\)-release\//\1/')
+          if ls binaries-*/ 1> /dev/null 2>&1; then
+            for binary_dir in binaries-*/; do
+              extension_name=$(echo "$binary_dir" | sed 's/binaries-\(.*\)\//\1/')
               successful_extensions+=("$extension_name")
             done
           fi
           
           if [ ${#successful_extensions[@]} -gt 0 ]; then
-            echo "## ✅ Successfully Released Extensions" >> final_report.md
+            echo "## ✅ Successfully Built Extensions" >> final_report.md
             echo "" >> final_report.md
             for ext in "${successful_extensions[@]}"; do
-              echo "- **$ext**: Built and released with version update" >> final_report.md
+              echo "- **$ext**: Built and compressed with UPX, uploaded to repo branch" >> final_report.md
             done
             echo "" >> final_report.md
           fi
@@ -345,7 +355,8 @@ jobs:
           echo "- ✅ indicates successful validation" >> final_report.md
           echo "- ⚠️  indicates partial success or expected limitations" >> final_report.md
           echo "- ❌ indicates failure that needs attention" >> final_report.md
-          echo "- Extensions that pass all source tests get version bumps and cross-platform builds" >> final_report.md
+          echo "- Extensions that pass all source tests get version bumps and cross-platform builds with UPX compression" >> final_report.md
+          echo "- Built binaries are uploaded to the 'repo' branch in the /bin directory" >> final_report.md
 
       - name: Upload final report
         uses: actions/upload-artifact@v4
@@ -395,80 +406,85 @@ jobs:
         run: |
           updates_found=false
           
-          # Rebuild extensions with updated versions to check for changes
+          # Check if any extensions had successful tests
           for extension in $(echo '${{ needs.discover-extensions.outputs.extensions }}' | jq -r '.[]'); do
-            if [ -d "extension-${extension}-release" ]; then
-              echo "Extension $extension had successful tests and version update"
+            if [ -d "binaries-${extension}" ]; then
+              echo "Extension $extension had successful tests and binaries built"
               updates_found=true
-              
-              # Copy updated source files if they exist
-              if [ -f "test-report-${extension}/bin/${extension}-test" ]; then
-                echo "Found updated binary for $extension"
-              fi
             fi
           done
           
           echo "updates_found=$updates_found" >> $GITHUB_OUTPUT
 
-      - name: Commit version updates
+      - name: Setup repo branch
         if: steps.check-updates.outputs.updates_found == 'true'
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           
+          # Check if repo branch exists
+          if git ls-remote --heads origin repo | grep -q repo; then
+            echo "Repo branch exists, checking out"
+            git fetch origin repo
+            git checkout repo
+          else
+            echo "Creating new repo branch"
+            git checkout --orphan repo
+            git rm -rf .
+            mkdir -p bin
+            echo "# Extension Binaries Repository" > README.md
+            echo "This branch contains compiled binaries for all extensions." >> README.md
+            git add README.md
+            git commit -m "Initialize repo branch"
+          fi
+
+      - name: Copy binaries to repo branch
+        if: steps.check-updates.outputs.updates_found == 'true'
+        run: |
+          # Copy all binaries from artifacts
+          for extension in $(echo '${{ needs.discover-extensions.outputs.extensions }}' | jq -r '.[]'); do
+            if [ -d "binaries-${extension}" ]; then
+              echo "Copying binaries for $extension"
+              cp -r binaries-${extension}/* bin/ 2>/dev/null || true
+            fi
+          done
+          
+          # List what we have
+          echo "Files in bin directory:"
+          ls -la bin/
+
+      - name: Commit and push to repo branch
+        if: steps.check-updates.outputs.updates_found == 'true'
+        run: |
           # Check if there are changes to commit
           if [ -n "$(git status --porcelain)" ]; then
-            git add .
-            git commit -m "Auto-update extension versions after successful tests [skip ci]"
-            git push
-            echo "✅ Version updates committed"
+            git add bin/
+            git commit -m "Update extension binaries - $(date '+%Y-%m-%d %H:%M:%S')"
+            git push origin repo
+            echo "✅ Binaries pushed to repo branch"
           else
             echo "No changes to commit"
           fi
 
-      - name: Create release
+      - name: Update main branch with version changes
         if: steps.check-updates.outputs.updates_found == 'true'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-            const path = require('path');
-            
-            // Get current date for release tag
-            const date = new Date().toISOString().split('T')[0];
-            const tagName = `release-${date}-${context.sha.substring(0, 7)}`;
-            
-            // Create release
-            const release = await github.rest.repos.createRelease({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              tag_name: tagName,
-              name: `Extension Release ${date}`,
-              body: 'Automated release of updated extensions after successful testing.',
-              draft: false,
-              prerelease: false
-            });
-            
-            // Upload assets from release directories
-            const releaseId = release.data.id;
-            const releaseDirs = fs.readdirSync('.').filter(dir => dir.startsWith('extension-') && dir.endsWith('-release'));
-            
-            for (const releaseDir of releaseDirs) {
-              const files = fs.readdirSync(releaseDir);
-              for (const file of files) {
-                if (file.endsWith('.gz') || file.endsWith('.json')) {
-                  const filePath = path.join(releaseDir, file);
-                  const fileContent = fs.readFileSync(filePath);
-                  
-                  await github.rest.repos.uploadReleaseAsset({
-                    owner: context.repo.owner,
-                    repo: context.repo.repo,
-                    release_id: releaseId,
-                    name: file,
-                    data: fileContent
-                  });
-                  
-                  console.log(`Uploaded ${file}`);
-                }
-              }
-            }
+        run: |
+          # Switch back to main branch to commit version updates
+          git checkout main
+          git pull origin main
+          
+          # Update version in source files if needed
+          for extension in $(echo '${{ needs.discover-extensions.outputs.extensions }}' | jq -r '.[]'); do
+            if [ -d "binaries-${extension}" ]; then
+              echo "Checking version updates for $extension"
+              # The version updates were already made in the test phase
+            fi
+          done
+          
+          # Commit any version changes to main branch
+          if [ -n "$(git status --porcelain)" ]; then
+            git add .
+            git commit -m "Auto-update extension versions after successful tests [skip ci]"
+            git push origin main
+            echo "✅ Version updates committed to main branch"
+          fi

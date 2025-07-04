@@ -1,0 +1,549 @@
+{
+    "data": {
+        "shows": {
+            "edges": [
+                {
+                    "_id": "NgBEXqAwjcGqNekoP",
+                    "name": "One Piece: Episode of East Blue - Luffy to 4-nin no Nakama no Daibouken",
+                    "englishName": "One Piece: Episode of East Blue",
+                    "availableEpisodes": {
+                        "sub": 1,
+                        "dub": 1,
+                        "raw": 0
+                    },
+                    "status": "Finished",
+                    "type": "Special"
+                },
+                {
+                    "_id": "nhTME6YJ6ttbRPDoe",
+                    "name": "One Piece: Episode of Nami - Koukaishi no Namida to Nakama no Kizuna",
+                    "englishName": "One Piece: Episode of Nami - Tears of a Navigator and the Bonds of Friends",
+                    "availableEpisodes": {
+                        "sub": 1,
+                        "dub": 0,
+                        "raw": 0
+                    },
+                    "status": "Finished",
+                    "type": "Special"
+                },
+                {
+                    "_id": "XsdbYey4SFRZADAux",
+                    "name": "One Piece 3D: Mugiwara Chase",
+                    "englishName": "One Piece 3D: Mugiwara Chase",
+                    "availableEpisodes": {
+                        "sub": 1,
+                        "dub": 0,
+                        "raw": 0
+                    },
+                    "status": "Finished",
+                    "type": "Movie"
+                },
+                {
+                    "_id": "i4HEW8vSuw6oRGoxN",
+                    "name": "One Piece Film: Gold",
+                    "englishName": "One Piece Film: Gold",
+                    "availableEpisodes": {
+                        "sub": 1,
+                        "dub": 1,
+                        "raw": 0
+                    },
+                    "status": "Finished",
+                    "type": "Movie"
+                },
+                {
+                    "_id": "DxybvdphcFQbPe2fB",
+                    "name": "One Piece Film: Gold Episode 0: 711 ver.",
+                    "englishName": "ONE PIECE FILM GOLD 〜episode 0〜 711ver.",
+                    "availableEpisodes": {
+                        "sub": 1,
+                        "dub": 0,
+                        "raw": 0
+                    },
+                    "status": "Finished",
+                    "type": "Special"
+                },
+                {
+                    "_id": "gqgoX5eRhxKemyGtG",
+                    "name": "One Piece: Heart of Gold",
+                    "englishName": "One Piece: Heart of Gold",
+                    "availableEpisodes": {
+                        "sub": 1,
+                        "dub": 1,
+                        "raw": 0
+                    },
+                    "status": "Finished",
+                    "type": "Special"
+                },
+                {
+                    "_id": "YLzWkpckbsBPnH7C5",
+                    "name": "One Piece: Adventure of Nebulandia",
+                    "englishName": "One Piece: Adventure of Nebulandia",
+                    "availableEpisodes": {
+                        "sub": 1,
+                        "dub": 1,
+                        "raw": 0
+                    },
+                    "status": "Finished",
+                    "type": "Special"
+                },
+                {
+                    "_id": "goWjoFsvZMnGJ6G6k",
+                    "name": "One Piece: Episode of Sabo: 3 Kyoudai no Kizuna Kiseki no Saikai to Uketsugareru Ishi",
+                    "englishName": "One Piece - Episode of Sabo: Bond of Three Brothers - A Miraculous Reunion and an Inherited Will",
+                    "availableEpisodes": {
+                        "sub": 1,
+                        "dub": 0,
+                        "raw": 0
+                    },
+                    "status": "Finished",
+                    "type": "Special"
+                },
+                {
+                    "_id": "fGF5biZienzs28q4q",
+                    "name": "One Piece: Episode of Merry: Mou Hitori no Nakama no Monogatari",
+                    "englishName": "One Piece: Episode of Merry - The Tale of One More Friend",
+                    "availableEpisodes": {
+                        "sub": 1,
+                        "dub": 0,
+                        "raw": 0
+                    },
+                    "status": "Finished",
+                    "type": "Special"
+                },
+                {
+                    "_id": "h4Zwgq7wxHSfrs2J3",
+                    "name": "Toriko",
+                    "englishName": "Toriko",
+                    "availableEpisodes": {
+                        "sub": 147,
+                        "dub": 50,
+                        "raw": 0
+                    },
+                    "status": "Finished",
+                    "type": "TV"
+                },
+                {
+                    "_id": "WadDJHvoft5GsW2th",
+                    "name": "One Piece Movie 7: Karakuri-jou no Mecha Kyohei",
+                    "englishName": "One Piece: Mega Mecha Soldier of Karakuri Castle",
+                    "availableEpisodes": {
+                        "sub": 1,
+                        "dub": 0,
+                        "raw": 0
+                    },
+                    "status": "Finished",
+                    "type": "Movie"
+                },
+                {
+                    "_id": "qqiaQnyoKWxPzacEE",
+                    "name": "One Piece Movie 8: The Desert Princess and the Pirates",
+                    "englishName": "One Piece: Episode of Alabasta - The Desert Princess and the Pirates",
+                    "availableEpisodes": {
+                        "sub": 1,
+                        "dub": 1,
+                        "raw": 0
+                    },
+                    "status": "Finished",
+                    "type": "Movie"
+                },
+                {
+                    "_id": "rcAyFGyMsvkPCpWji",
+                    "name": "One Piece Movie 9: Bloom in the Winter, Miracle Sakura",
+                    "englishName": "One Piece: Episode Of Chopper +: The Miracle Winter Cherry Blossom",
+                    "availableEpisodes": {
+                        "sub": 1,
+                        "dub": 0,
+                        "raw": 0
+                    },
+                    "status": "Finished",
+                    "type": "Movie"
+                },
+                {
+                    "_id": "ManjgxWYHRKzmEaTi",
+                    "name": "One Piece Film: Z",
+                    "englishName": "One Piece Film: Z",
+                    "availableEpisodes": {
+                        "sub": 1,
+                        "dub": 1,
+                        "raw": 0
+                    },
+                    "status": "Finished",
+                    "type": "Movie"
+                },
+                {
+                    "_id": "byLzusEDg2NsfnfTq",
+                    "name": "One Piece Movie 1",
+                    "englishName": "One Piece: The Movie",
+                    "availableEpisodes": {
+                        "sub": 1,
+                        "dub": 0,
+                        "raw": 0
+                    },
+                    "status": "Finished",
+                    "type": "Movie"
+                },
+                {
+                    "_id": "uBWxph8DWg2fdidgS",
+                    "name": "One Piece Movie 2: Nejimaki-jima no Daibouken",
+                    "englishName": "One Piece: Clockwork Island Adventure",
+                    "availableEpisodes": {
+                        "sub": 1,
+                        "dub": 0,
+                        "raw": 0
+                    },
+                    "status": "Finished",
+                    "type": "Movie"
+                },
+                {
+                    "_id": "K4D2cbkqbzvzBJCWy",
+                    "name": "One Piece Movie 03: Chinjuujima no Chopper Oukoku",
+                    "englishName": "One Piece: Chopper Kingdom of Strange Animal Island",
+                    "availableEpisodes": {
+                        "sub": 1,
+                        "dub": 0,
+                        "raw": 0
+                    },
+                    "status": "Finished",
+                    "type": "Movie"
+                },
+                {
+                    "_id": "Wf4riyuzhzstfZou2",
+                    "name": "ONE PIECE THE MOVIE: Dead End no Bouken",
+                    "englishName": "One Piece The Movie: The Dead End Adventure",
+                    "availableEpisodes": {
+                        "sub": 1,
+                        "dub": 0,
+                        "raw": 0
+                    },
+                    "status": "Finished",
+                    "type": "Movie"
+                },
+                {
+                    "_id": "JTFLQ2xrjPkzjnKdb",
+                    "name": "One Piece Movie 5: Norowareta Seiken",
+                    "englishName": "One Piece: The Curse of the Sacred Sword",
+                    "availableEpisodes": {
+                        "sub": 1,
+                        "dub": 0,
+                        "raw": 0
+                    },
+                    "status": "Finished",
+                    "type": "Movie"
+                },
+                {
+                    "_id": "Kw8oBQ2mLctAbJSiC",
+                    "name": "One Piece Movie 6: Baron Omatsuri and the Secret Island",
+                    "englishName": "One Piece: Baron Omatsuri and the Secret Island",
+                    "availableEpisodes": {
+                        "sub": 1,
+                        "dub": 0,
+                        "raw": 0
+                    },
+                    "status": "Finished",
+                    "type": "Movie"
+                }
+            ]
+        }
+    }
+} [
+    {
+        "anime_id": "NgBEXqAwjcGqNekoP",
+        "title": "One Piece: Episode of East Blue - Luffy to 4-nin no Nakama no Daibouken",
+        "artist": "",
+        "author": "",
+        "description": "",
+        "genre": "",
+        "thumbnail_url": "",
+        "status": "Finished",
+        "alternative_titles": [
+            "One Piece: Episode of East Blue"
+        ],
+        "episodes": 1,
+        "sub_dub": "sub"
+    },
+    {
+        "anime_id": "nhTME6YJ6ttbRPDoe",
+        "title": "One Piece: Episode of Nami - Koukaishi no Namida to Nakama no Kizuna",
+        "artist": "",
+        "author": "",
+        "description": "",
+        "genre": "",
+        "thumbnail_url": "",
+        "status": "Finished",
+        "alternative_titles": [
+            "One Piece: Episode of Nami - Tears of a Navigator and the Bonds of Friends"
+        ],
+        "episodes": 1,
+        "sub_dub": "sub"
+    },
+    {
+        "anime_id": "XsdbYey4SFRZADAux",
+        "title": "One Piece 3D: Mugiwara Chase",
+        "artist": "",
+        "author": "",
+        "description": "",
+        "genre": "",
+        "thumbnail_url": "",
+        "status": "Finished",
+        "alternative_titles": [
+            "One Piece 3D: Mugiwara Chase"
+        ],
+        "episodes": 1,
+        "sub_dub": "sub"
+    },
+    {
+        "anime_id": "i4HEW8vSuw6oRGoxN",
+        "title": "One Piece Film: Gold",
+        "artist": "",
+        "author": "",
+        "description": "",
+        "genre": "",
+        "thumbnail_url": "",
+        "status": "Finished",
+        "alternative_titles": [
+            "One Piece Film: Gold"
+        ],
+        "episodes": 1,
+        "sub_dub": "sub"
+    },
+    {
+        "anime_id": "DxybvdphcFQbPe2fB",
+        "title": "One Piece Film: Gold Episode 0: 711 ver.",
+        "artist": "",
+        "author": "",
+        "description": "",
+        "genre": "",
+        "thumbnail_url": "",
+        "status": "Finished",
+        "alternative_titles": [
+            "ONE PIECE FILM GOLD 〜episode 0〜 711ver."
+        ],
+        "episodes": 1,
+        "sub_dub": "sub"
+    },
+    {
+        "anime_id": "gqgoX5eRhxKemyGtG",
+        "title": "One Piece: Heart of Gold",
+        "artist": "",
+        "author": "",
+        "description": "",
+        "genre": "",
+        "thumbnail_url": "",
+        "status": "Finished",
+        "alternative_titles": [
+            "One Piece: Heart of Gold"
+        ],
+        "episodes": 1,
+        "sub_dub": "sub"
+    },
+    {
+        "anime_id": "YLzWkpckbsBPnH7C5",
+        "title": "One Piece: Adventure of Nebulandia",
+        "artist": "",
+        "author": "",
+        "description": "",
+        "genre": "",
+        "thumbnail_url": "",
+        "status": "Finished",
+        "alternative_titles": [
+            "One Piece: Adventure of Nebulandia"
+        ],
+        "episodes": 1,
+        "sub_dub": "sub"
+    },
+    {
+        "anime_id": "goWjoFsvZMnGJ6G6k",
+        "title": "One Piece: Episode of Sabo: 3 Kyoudai no Kizuna Kiseki no Saikai to Uketsugareru Ishi",
+        "artist": "",
+        "author": "",
+        "description": "",
+        "genre": "",
+        "thumbnail_url": "",
+        "status": "Finished",
+        "alternative_titles": [
+            "One Piece - Episode of Sabo: Bond of Three Brothers - A Miraculous Reunion and an Inherited Will"
+        ],
+        "episodes": 1,
+        "sub_dub": "sub"
+    },
+    {
+        "anime_id": "fGF5biZienzs28q4q",
+        "title": "One Piece: Episode of Merry: Mou Hitori no Nakama no Monogatari",
+        "artist": "",
+        "author": "",
+        "description": "",
+        "genre": "",
+        "thumbnail_url": "",
+        "status": "Finished",
+        "alternative_titles": [
+            "One Piece: Episode of Merry - The Tale of One More Friend"
+        ],
+        "episodes": 1,
+        "sub_dub": "sub"
+    },
+    {
+        "anime_id": "h4Zwgq7wxHSfrs2J3",
+        "title": "Toriko",
+        "artist": "",
+        "author": "",
+        "description": "",
+        "genre": "",
+        "thumbnail_url": "",
+        "status": "Finished",
+        "alternative_titles": [
+            "Toriko"
+        ],
+        "episodes": 147,
+        "sub_dub": "sub"
+    },
+    {
+        "anime_id": "WadDJHvoft5GsW2th",
+        "title": "One Piece Movie 7: Karakuri-jou no Mecha Kyohei",
+        "artist": "",
+        "author": "",
+        "description": "",
+        "genre": "",
+        "thumbnail_url": "",
+        "status": "Finished",
+        "alternative_titles": [
+            "One Piece: Mega Mecha Soldier of Karakuri Castle"
+        ],
+        "episodes": 1,
+        "sub_dub": "sub"
+    },
+    {
+        "anime_id": "qqiaQnyoKWxPzacEE",
+        "title": "One Piece Movie 8: The Desert Princess and the Pirates",
+        "artist": "",
+        "author": "",
+        "description": "",
+        "genre": "",
+        "thumbnail_url": "",
+        "status": "Finished",
+        "alternative_titles": [
+            "One Piece: Episode of Alabasta - The Desert Princess and the Pirates"
+        ],
+        "episodes": 1,
+        "sub_dub": "sub"
+    },
+    {
+        "anime_id": "rcAyFGyMsvkPCpWji",
+        "title": "One Piece Movie 9: Bloom in the Winter, Miracle Sakura",
+        "artist": "",
+        "author": "",
+        "description": "",
+        "genre": "",
+        "thumbnail_url": "",
+        "status": "Finished",
+        "alternative_titles": [
+            "One Piece: Episode Of Chopper +: The Miracle Winter Cherry Blossom"
+        ],
+        "episodes": 1,
+        "sub_dub": "sub"
+    },
+    {
+        "anime_id": "ManjgxWYHRKzmEaTi",
+        "title": "One Piece Film: Z",
+        "artist": "",
+        "author": "",
+        "description": "",
+        "genre": "",
+        "thumbnail_url": "",
+        "status": "Finished",
+        "alternative_titles": [
+            "One Piece Film: Z"
+        ],
+        "episodes": 1,
+        "sub_dub": "sub"
+    },
+    {
+        "anime_id": "byLzusEDg2NsfnfTq",
+        "title": "One Piece Movie 1",
+        "artist": "",
+        "author": "",
+        "description": "",
+        "genre": "",
+        "thumbnail_url": "",
+        "status": "Finished",
+        "alternative_titles": [
+            "One Piece: The Movie"
+        ],
+        "episodes": 1,
+        "sub_dub": "sub"
+    },
+    {
+        "anime_id": "uBWxph8DWg2fdidgS",
+        "title": "One Piece Movie 2: Nejimaki-jima no Daibouken",
+        "artist": "",
+        "author": "",
+        "description": "",
+        "genre": "",
+        "thumbnail_url": "",
+        "status": "Finished",
+        "alternative_titles": [
+            "One Piece: Clockwork Island Adventure"
+        ],
+        "episodes": 1,
+        "sub_dub": "sub"
+    },
+    {
+        "anime_id": "K4D2cbkqbzvzBJCWy",
+        "title": "One Piece Movie 03: Chinjuujima no Chopper Oukoku",
+        "artist": "",
+        "author": "",
+        "description": "",
+        "genre": "",
+        "thumbnail_url": "",
+        "status": "Finished",
+        "alternative_titles": [
+            "One Piece: Chopper Kingdom of Strange Animal Island"
+        ],
+        "episodes": 1,
+        "sub_dub": "sub"
+    },
+    {
+        "anime_id": "Wf4riyuzhzstfZou2",
+        "title": "ONE PIECE THE MOVIE: Dead End no Bouken",
+        "artist": "",
+        "author": "",
+        "description": "",
+        "genre": "",
+        "thumbnail_url": "",
+        "status": "Finished",
+        "alternative_titles": [
+            "One Piece The Movie: The Dead End Adventure"
+        ],
+        "episodes": 1,
+        "sub_dub": "sub"
+    },
+    {
+        "anime_id": "JTFLQ2xrjPkzjnKdb",
+        "title": "One Piece Movie 5: Norowareta Seiken",
+        "artist": "",
+        "author": "",
+        "description": "",
+        "genre": "",
+        "thumbnail_url": "",
+        "status": "Finished",
+        "alternative_titles": [
+            "One Piece: The Curse of the Sacred Sword"
+        ],
+        "episodes": 1,
+        "sub_dub": "sub"
+    },
+    {
+        "anime_id": "Kw8oBQ2mLctAbJSiC",
+        "title": "One Piece Movie 6: Baron Omatsuri and the Secret Island",
+        "artist": "",
+        "author": "",
+        "description": "",
+        "genre": "",
+        "thumbnail_url": "",
+        "status": "Finished",
+        "alternative_titles": [
+            "One Piece: Baron Omatsuri and the Secret Island"
+        ],
+        "episodes": 1,
+        "sub_dub": "sub"
+    }
+]
